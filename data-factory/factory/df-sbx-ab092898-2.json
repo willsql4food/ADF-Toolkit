@@ -1,5 +1,13 @@
 {
 	"name": "df-sbx-ab092898-2",
+	"properties": {
+		"globalParameters": {
+			"gpWMSQL": {
+				"type": "string",
+				"value": "sql-ab092898.database.windows.net"
+			}
+		}
+	},
 	"location": "eastus",
 	"identity": {
 		"type": "SystemAssigned",
