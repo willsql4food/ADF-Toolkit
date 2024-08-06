@@ -14,6 +14,10 @@
 		"AzSqlDb_properties_typeProperties_database": {
 			"type": "string",
 			"defaultValue": "@{linkedService().lsDbName}"
+		},
+		"default_properties_gpWMSQL_value": {
+			"type": "string",
+			"defaultValue": "sql-ab092898.database.windows.net"
 		}
 	},
 	"variables": {
@@ -558,7 +562,12 @@
 			"name": "[concat(parameters('factoryName'), '/default')]",
 			"type": "Microsoft.DataFactory/factories/globalparameters",
 			"apiVersion": "2018-06-01",
-			"properties": {},
+			"properties": {
+				"gpWMSQL": {
+					"type": "string",
+					"value": "[parameters('default_properties_gpWMSQL_value')]"
+				}
+			},
 			"dependsOn": []
 		}
 	]

@@ -10,6 +10,9 @@
 		},
 		"AzSqlDb_properties_typeProperties_database": {
 			"value": "@{linkedService().lsDbName}"
+		},
+		"default_properties_gpWMSQL_value": {
+			"value": "sql-ab092898.database.windows.net"
 		}
 	}
 }
