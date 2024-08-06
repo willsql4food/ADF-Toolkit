@@ -1,0 +1,558 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "df-sbx-ab092898-2"
+		},
+		"AzSqlDb_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "@{linkedService().lsServerName}"
+		},
+		"AzSqlDb_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "@{linkedService().lsDbName}"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Fail Bubble Up')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Loop Actions",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('ProcessArray')",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Success or Fail",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@if(equals(0, mod(item().value, pipeline().parameters.divisor)), false, true)",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "Add Falure",
+												"type": "AppendVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StatusArray",
+													"value": {
+														"value": "@json(concat('{\"name\":\"', item().name, '\", \"success\":0}'))",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "Add success",
+												"type": "AppendVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StatusArray",
+													"value": {
+														"value": "@json(concat('{\"name\":\"', item().name, '\", \"success\":1}'))",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Find Fails",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Loop Actions",
+								"dependencyConditions": [
+									"Completed",
+									"Skipped"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('StatusArray')",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@equals(item().success, 0)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "If Any Failure",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Find Fails",
+								"dependencyConditions": [
+									"Completed",
+									"Skipped"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(activity('Find Fails').output.FilteredItemsCount, 0)",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Fail Pipeline",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": {
+											"value": "@concat(string(activity('Find Fails').output.FilteredItemsCount), ' of ', string(activity('Find Fails').output.ItemsCount), ' activities failed.')",
+											"type": "Expression"
+										},
+										"errorCode": "9999"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"divisor": {
+						"type": "int",
+						"defaultValue": 99
+					}
+				},
+				"variables": {
+					"ProcessArray": {
+						"type": "Array",
+						"defaultValue": [
+							{
+								"name": "Action 1",
+								"value": 1
+							},
+							{
+								"name": "Action 2",
+								"value": 2
+							},
+							{
+								"name": "Action 3",
+								"value": 3
+							},
+							{
+								"name": "Action 4",
+								"value": 4
+							},
+							{
+								"name": "Action 5",
+								"value": 5
+							},
+							{
+								"name": "Action 6",
+								"value": 6
+							},
+							{
+								"name": "Action 7",
+								"value": 7
+							},
+							{
+								"name": "Action 8",
+								"value": 8
+							},
+							{
+								"name": "Action 9",
+								"value": 9
+							},
+							{
+								"name": "Action 10",
+								"value": 10
+							}
+						]
+					},
+					"StatusArray": {
+						"type": "Array",
+						"defaultValue": []
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-08-05T20:59:34Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzSqlDb')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"lsServerName": {
+						"type": "string",
+						"defaultValue": "sql-ab092898.database.windows.net"
+					},
+					"lsDbName": {
+						"type": "string",
+						"defaultValue": "LoadControl_pm"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('AzSqlDb_properties_typeProperties_server')]",
+					"database": "[parameters('AzSqlDb_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SystemAssignedManagedIdentity"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzSqlQuery')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzSqlDb",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"lsServerName": {
+							"value": "@dataset().dsServerName",
+							"type": "Expression"
+						},
+						"lsDbName": {
+							"value": "@dataset().dsDbName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"dsServerName": {
+						"type": "string",
+						"defaultValue": "sql-ab092898.database.windows.net"
+					},
+					"dsDbName": {
+						"type": "string",
+						"defaultValue": "LoadControl_pm"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzSqlDb')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzSqlTable')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzSqlDb",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"lsServerName": {
+							"value": "@dataset().dsServerName",
+							"type": "Expression"
+						},
+						"lsDbName": {
+							"value": "@dataset().dsDbName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"dsSchema": {
+						"type": "string",
+						"defaultValue": "stage"
+					},
+					"dsTable": {
+						"type": "string",
+						"defaultValue": "gbqObject"
+					},
+					"dsServerName": {
+						"type": "string",
+						"defaultValue": "sql-ab092898.database.windows.net"
+					},
+					"dsDbName": {
+						"type": "string",
+						"defaultValue": "LoadControl_pm"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().dsSchema",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().dsTable",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzSqlDb')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlDemo')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetTableList",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 3,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select  sch = s.name\r\n    ,   tbl = t.name\r\nfrom    sys.tables t\r\njoin    sys.schemas s on s.schema_id = t.schema_id\r\nwhere   s.name not in ('history')",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzSqlQuery",
+								"type": "DatasetReference",
+								"parameters": {
+									"dsServerName": "sql-ab092898.database.windows.net",
+									"dsDbName": "LoadControl_pm"
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LoopTables",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "GetTableList",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('GetTableList').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "GetRowCount",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [
+										{
+											"name": "Item",
+											"value": "@{item().sch}.@{item().tbl}"
+										}
+									],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "select tbl_schema = '@{item().sch}', tbl_name = '@{item().tbl}', num_rows = count(*) \r\nfrom @{item().sch}.@{item().tbl}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "AzSqlQuery",
+											"type": "DatasetReference",
+											"parameters": {
+												"dsServerName": "sql-ab092898.database.windows.net",
+												"dsDbName": "LoadControl_pm"
+											}
+										}
+									}
+								},
+								{
+									"name": "FirstRow",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [
+										{
+											"name": "Item",
+											"value": "@{item().sch}.@{item().tbl}"
+										}
+									],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "AzSqlTable",
+											"type": "DatasetReference",
+											"parameters": {
+												"dsSchema": {
+													"value": "@item().sch",
+													"type": "Expression"
+												},
+												"dsTable": {
+													"value": "@item().tbl",
+													"type": "Expression"
+												},
+												"dsServerName": "sql-ab092898.database.windows.net",
+												"dsDbName": "LoadControl_pm"
+											}
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-07-23T15:24:58Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzSqlQuery')]",
+				"[concat(variables('factoryId'), '/datasets/AzSqlTable')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Succeed 80 percent')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Time and Fail Flag",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select  current_timestamp as TimeNow\r\n    ,   case when datepart(ms, current_timestamp) % 10 < 1 then 'false' else 'true' end as Success\r\n    ,   datepart(ms, current_timestamp) as MicroSeconds\r\n    ,   datepart(ms, current_timestamp) % 10 as FailFlag",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzSqlQuery",
+								"type": "DatasetReference",
+								"parameters": {
+									"dsServerName": {
+										"value": "sql-ab092898.database.windows.net",
+										"type": "Expression"
+									},
+									"dsDbName": "LoadControl_pm"
+								}
+							}
+						}
+					},
+					{
+						"name": "Check Fail",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Get Time and Fail Flag",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@activity('Get Time and Fail Flag').output.firstRow.Success",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Failure",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": "Random Failure",
+										"errorCode": "-1"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-08-05T21:04:12Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzSqlQuery')]"
+			]
+		}
+	]
+}
