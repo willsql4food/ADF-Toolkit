@@ -1,0 +1,25 @@
+{
+	"name": "AzSqlDb",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"lsServerName": {
+				"type": "string",
+				"defaultValue": "sql-ab092898.database.windows.net"
+			},
+			"lsDbName": {
+				"type": "string",
+				"defaultValue": "LoadControl_pm"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"server": "@{linkedService().lsServerName}",
+			"database": "@{linkedService().lsDbName}",
+			"encrypt": "mandatory",
+			"trustServerCertificate": false,
+			"authenticationType": "SystemAssignedManagedIdentity"
+		}
+	}
+}

@@ -1,0 +1,51 @@
+{
+	"name": "AzSqlTable",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzSqlDb",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"lsServerName": {
+					"value": "@dataset().dsServerName",
+					"type": "Expression"
+				},
+				"lsDbName": {
+					"value": "@dataset().dsDbName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"dsSchema": {
+				"type": "string",
+				"defaultValue": "stage"
+			},
+			"dsTable": {
+				"type": "string",
+				"defaultValue": "gbqObject"
+			},
+			"dsServerName": {
+				"type": "string",
+				"defaultValue": "sql-ab092898.database.windows.net"
+			},
+			"dsDbName": {
+				"type": "string",
+				"defaultValue": "LoadControl_pm"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": {
+				"value": "@dataset().dsSchema",
+				"type": "Expression"
+			},
+			"table": {
+				"value": "@dataset().dsTable",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

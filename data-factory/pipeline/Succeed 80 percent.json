@@ -1,0 +1,73 @@
+{
+	"name": "Succeed 80 percent",
+	"properties": {
+		"activities": [
+			{
+				"name": "Get Time and Fail Flag",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select  current_timestamp as TimeNow\r\n    ,   case when datepart(ms, current_timestamp) % 10 < 1 then 'false' else 'true' end as Success\r\n    ,   datepart(ms, current_timestamp) as MicroSeconds\r\n    ,   datepart(ms, current_timestamp) % 10 as FailFlag",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AzSqlQuery",
+						"type": "DatasetReference",
+						"parameters": {
+							"dsServerName": {
+								"value": "sql-ab092898.database.windows.net",
+								"type": "Expression"
+							},
+							"dsDbName": "LoadControl_pm"
+						}
+					}
+				}
+			},
+			{
+				"name": "Check Fail",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Get Time and Fail Flag",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@activity('Get Time and Fail Flag').output.firstRow.Success",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Failure",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "Random Failure",
+								"errorCode": "-1"
+							}
+						}
+					]
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2024-08-05T21:04:12Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

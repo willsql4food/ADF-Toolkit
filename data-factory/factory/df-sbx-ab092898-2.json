@@ -1,0 +1,17 @@
+{
+	"name": "df-sbx-ab092898-2",
+	"properties": {
+		"globalParameters": {
+			"gpWMSQL": {
+				"type": "string",
+				"value": "sql-ab092898.database.windows.net"
+			}
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "f03b4a8e-3071-44eb-b2ec-9a6ab0bf35c3",
+		"tenantId": "6ed1cffb-0bf7-4bdb-aa67-6c34e7f32bb3"
+	}
+}

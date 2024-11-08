@@ -1,0 +1,139 @@
+{
+	"name": "SqlDemo",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetTableList",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select  sch = s.name\r\n    ,   tbl = t.name\r\nfrom    sys.tables t\r\njoin    sys.schemas s on s.schema_id = t.schema_id\r\nwhere   s.name not in ('history')",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AzSqlQuery",
+						"type": "DatasetReference",
+						"parameters": {
+							"dsServerName": "sql-ab092898.database.windows.net",
+							"dsDbName": "LoadControl_pm"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "LoopTables",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "GetTableList",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('GetTableList').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "GetRowCount",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [
+								{
+									"name": "Item",
+									"value": "@{item().sch}.@{item().tbl}"
+								}
+							],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "select tbl_schema = '@{item().sch}', tbl_name = '@{item().tbl}', num_rows = count(*) \r\nfrom @{item().sch}.@{item().tbl}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "AzSqlQuery",
+									"type": "DatasetReference",
+									"parameters": {
+										"dsServerName": "sql-ab092898.database.windows.net",
+										"dsDbName": "LoadControl_pm"
+									}
+								}
+							}
+						},
+						{
+							"name": "FirstRow",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [
+								{
+									"name": "Item",
+									"value": "@{item().sch}.@{item().tbl}"
+								}
+							],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "AzSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"dsSchema": {
+											"value": "@item().sch",
+											"type": "Expression"
+										},
+										"dsTable": {
+											"value": "@item().tbl",
+											"type": "Expression"
+										},
+										"dsServerName": "sql-ab092898.database.windows.net",
+										"dsDbName": "LoadControl_pm"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2024-07-23T15:24:58Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

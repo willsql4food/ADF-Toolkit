@@ -1,0 +1,182 @@
+{
+	"name": "Fail Bubble Up",
+	"properties": {
+		"activities": [
+			{
+				"name": "Loop Actions",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('ProcessArray')",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Success or Fail",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@if(equals(0, mod(item().value, pipeline().parameters.divisor)), false, true)",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Add Falure",
+										"type": "AppendVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "StatusArray",
+											"value": {
+												"value": "@json(concat('{\"name\":\"', item().name, '\", \"success\":0}'))",
+												"type": "Expression"
+											}
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "Add success",
+										"type": "AppendVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "StatusArray",
+											"value": {
+												"value": "@json(concat('{\"name\":\"', item().name, '\", \"success\":1}'))",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Find Fails",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Loop Actions",
+						"dependencyConditions": [
+							"Completed",
+							"Skipped"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('StatusArray')",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().success, 0)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "If Any Failure",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Find Fails",
+						"dependencyConditions": [
+							"Completed",
+							"Skipped"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(activity('Find Fails').output.FilteredItemsCount, 0)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Fail Pipeline",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": {
+									"value": "@concat(string(activity('Find Fails').output.FilteredItemsCount), ' of ', string(activity('Find Fails').output.ItemsCount), ' activities failed.')",
+									"type": "Expression"
+								},
+								"errorCode": "9999"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"divisor": {
+				"type": "int",
+				"defaultValue": 99
+			}
+		},
+		"variables": {
+			"ProcessArray": {
+				"type": "Array",
+				"defaultValue": [
+					{
+						"name": "Action 1",
+						"value": 1
+					},
+					{
+						"name": "Action 2",
+						"value": 2
+					},
+					{
+						"name": "Action 3",
+						"value": 3
+					},
+					{
+						"name": "Action 4",
+						"value": 4
+					},
+					{
+						"name": "Action 5",
+						"value": 5
+					},
+					{
+						"name": "Action 6",
+						"value": 6
+					},
+					{
+						"name": "Action 7",
+						"value": 7
+					},
+					{
+						"name": "Action 8",
+						"value": 8
+					},
+					{
+						"name": "Action 9",
+						"value": 9
+					},
+					{
+						"name": "Action 10",
+						"value": 10
+					}
+				]
+			},
+			"StatusArray": {
+				"type": "Array",
+				"defaultValue": []
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-08-05T20:59:34Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
